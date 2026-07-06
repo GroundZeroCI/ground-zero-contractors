@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ground Zero Contractors Inc. — Heavy Civil & Remediation Experts</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f2f0ea;
+      color: #1c1c1a;
+      line-height: 1.6;
+    }
+    .topbar {
+      background: #14202b;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 18px;
+      color: #ffffff;
+      letter-spacing: 1px;
+    }
+    .logo-text {
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 1.5px;
+      line-height: 1.2;
+    }
+    .logo-text small {
+      font-weight: 400;
+      font-size: 11px;
+      color: #b0b0b0;
+      display: block;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      list-style: none;
+    }
+    .nav-links a {
+      color: #c0c0c0;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: #ffffff; }
+    .btn-orange {
+      display: inline-block;
+      background: #e8590c;
+      color: #ffffff;
+      padding: 10px 22px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      letter-spacing: 0.5px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-orange:hover { background: #d04d0a; }
+    .hero {
+      padding: 6rem 2rem 4rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: #1c1c1a;
+      margin-bottom: 1rem;
+      letter-spacing: -0.5px;
+    }
+    .hero p {
+      font-size: 1.1rem;
+      color: #5a5a52;
+      max-width: 650px;
+      margin: 0 auto 2rem;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .feature-card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .feature-card .icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      color: #e8590c;
+    }
+    .feature-card h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+      color: #1c1c1a;
+    }
+    .feature-card p {
+      font-size: 0.9rem;
+      color: #6e6e66;
+    }
+    footer {
+      background: #14202b;
+      color: #8a8578;
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.85rem;
+      margin-top: 4rem;
+    }
+    @media (max-width: 768px) {
+      .topbar { padding: 0 1rem; }
+      .nav-links { gap: 0.8rem; }
+      .nav-links a { font-size: 12px; }
+      .hero h1 { font-size: 2rem; }
+      .hero { padding: 3rem 1rem 2rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topbar">
+    <a href="/" class="logo">
+      <div class="logo-mark">GZ</div>
+      <div class="logo-text">
+        GROUND ZERO
+        <small>CONTRACTORS INC.</small>
+      </div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/#services">Services</a></li>
+      <li><a href="/#projects">Projects</a></li>
+      <li><a href="/#contact">Contact</a></li>
+      <li><a href="/app/login" class="btn-orange">Staff / Client Login</a></li>
+    </ul>
+  </nav>
+
+  <section class="hero">
+    <h1>Heavy Civil &amp; Remediation Experts</h1>
+    <p>
+      Ground Zero Contractors Inc. delivers heavy civil construction, environmental
+      remediation, and site development across Ontario. Real-time project tracking
+      for our team and clients.
+    </p>
+    <a href="/app/login" class="btn-orange">Access Project Dashboard</a>
+  </section>
+
+  <section class="features" id="services">
+    <div class="feature-card">
+      <div class="icon">&#9776;</div>
+      <h3>Real-time Production Logs</h3>
+      <p>Track daily quantities, monitor progress, and stay ahead of schedule with live production data.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">&#128193;</div>
+      <h3>Organized Project Files</h3>
+      <p>All project documents, contacts, and folders structured and accessible from one place.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">&#128274;</div>
+      <h3>Secure Client Access</h3>
+      <p>Role-based access ensures clients and staff see only what they need — safely and securely.</p>
+    </div>
+  </section>
+
+  <footer>
+    &copy; 2026 Ground Zero Contractors Inc. All rights reserved.
+  </footer>
+</body>
+</html>
