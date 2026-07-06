@@ -95,6 +95,10 @@ export default function NewProjectWizard() {
       expenses: expenseSubfolders
     }
 
+    const validContacts = contacts.filter(c => c.email.trim())
+    const clientEmails = validContacts.map(c => c.email.trim())
+
+    // Create the project
     const { data, error } = await supabase.from('projects').insert({
       name: projectName,
       client: clientName,
@@ -102,15 +106,36 @@ export default function NewProjectWizard() {
       total_planned: totalPlanned ? parseFloat(totalPlanned) : null,
       start_date: startDate || null,
       target_date: targetDate || null,
-      contacts: JSON.stringify(contacts.filter(c => c.name || c.email)),
+      contacts: JSON.stringify(validContacts),
       folders: JSON.stringify(foldersData),
-      assigned_client_email: assignedClientEmail || null
+      assigned_client_email: clientEmails[0] || assignedClientEmail || null
     }).select().single()
 
-    setSubmitting(false)
-    if (!error && data) {
-      navigate(`/project/${data.id}`)
+    if (error || !data) {
+      setSubmitting(false)
+      return
     }
+
+    // Auto-create Supabase Auth accounts for client contacts
+    const created = []
+    for (const contact of validContacts) {
+      try {
+        const res = await fetch('/api/create-client', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: contact.email, name: contact.name })
+        })
+        const result = await res.json()
+        if (result.id || result.exists) created.push(contact.email)
+      } catch (_) {}
+    }
+
+    if (created.length > 0) {
+      console.log('Client accounts created/confirmed:', created.join(', '))
+    }
+
+    setSubmitting(false)
+    navigate(`/project/${data.id}`)
   }
 
   const canProceedStep1 = projectName.trim().length > 0 && clientName.trim().length > 0
