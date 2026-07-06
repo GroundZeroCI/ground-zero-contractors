@@ -30,8 +30,10 @@ export function AuthProvider({ children }) {
     return () => subscription?.unsubscribe()
   }, [])
 
+  const userRole = user?.user_metadata?.role || null
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, userRole, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

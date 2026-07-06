@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabase'
+import { useAuth } from './AuthContext'
 
 const STEPS = ['Basic Info', 'Client Contacts', 'Folders', 'Review']
 
 export default function NewProjectWizard() {
+  const { userRole, user } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+
+  const isClient = userRole === 'client'
 
   const [name, setName] = useState('')
   const [client, setClient] = useState('')
@@ -15,6 +19,7 @@ export default function NewProjectWizard() {
   const [totalPlanned, setTotalPlanned] = useState('')
   const [startDate, setStartDate] = useState('')
   const [targetDate, setTargetDate] = useState('')
+  const [assignedClientEmail, setAssignedClientEmail] = useState('')
 
   const [contacts, setContacts] = useState([{ name: '', email: '' }])
 
@@ -68,7 +73,8 @@ export default function NewProjectWizard() {
         start_date: startDate,
         target_date: targetDate,
         contacts: JSON.stringify(contacts),
-        folders: JSON.stringify(folders)
+        folders: JSON.stringify(folders),
+        assigned_client_email: assignedClientEmail || null
       })
       .select()
       .single()
@@ -168,6 +174,19 @@ export default function NewProjectWizard() {
                     <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} style={inputStyle} />
                   </div>
                 </div>
+                {!isClient && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1c1c1a', marginBottom: 4 }}>Assigned Client Email (optional)</label>
+                    <input
+                      type="email"
+                      value={assignedClientEmail}
+                      onChange={e => setAssignedClientEmail(e.target.value)}
+                      placeholder="client@example.com"
+                      style={inputStyle}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: '#8a8578', marginTop: 4 }}>Assign a client user to this project. They'll only see this project.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -248,6 +267,7 @@ export default function NewProjectWizard() {
                 <ReviewRow label="Total Planned" value={`${parseFloat(totalPlanned).toLocaleString()} ${unit}`} />
                 <ReviewRow label="Start Date" value={startDate} />
                 <ReviewRow label="Target Date" value={targetDate} />
+                {assignedClientEmail && <ReviewRow label="Client Email" value={assignedClientEmail} />}
                 <ReviewRow label="Contacts" value={contacts.filter(c => c.name && c.email).map(c => `${c.name} (${c.email})`).join(', ') || 'None'} />
                 <ReviewRow label="Folders" value={folders.join(', ')} />
               </div>

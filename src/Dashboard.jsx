@@ -4,9 +4,12 @@ import { supabase } from './supabase'
 import { useAuth } from './AuthContext'
 
 export default function Dashboard() {
-  const { user, logout } = useAuth()
+  const { user, userRole, logout } = useAuth()
   const [projects, setProjects] = useState([])
   const navigate = useNavigate()
+
+  const isClient = userRole === 'client'
+  const canCreate = userRole !== 'client'
 
   useEffect(() => {
     fetchProjects()
@@ -49,6 +52,13 @@ export default function Dashboard() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span style={{
+            background: isClient ? '#854d0e' : '#2b8a3e',
+            color: '#ffffff', fontSize: '0.7rem', fontWeight: 600,
+            padding: '2px 8px', borderRadius: 10, textTransform: 'uppercase'
+          }}>
+            {userRole}
+          </span>
           <span style={{ color: '#ffffff', fontSize: '0.85rem' }}>
             {user?.email}
           </span>
@@ -76,16 +86,18 @@ export default function Dashboard() {
           alignItems: 'center', marginBottom: '2rem'
         }}>
           <h1 style={{ fontSize: '1.6rem', color: '#1c1c1a', fontWeight: 700 }}>Dashboard</h1>
-          <button
-            onClick={() => navigate('/new')}
-            style={{
-              background: '#e8590c', color: '#ffffff', border: 'none',
-              padding: '10px 22px', borderRadius: 4, fontSize: '0.9rem',
-              fontWeight: 600, cursor: 'pointer', letterSpacing: 0.5
-            }}
-          >
-            + New Project
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => navigate('/new')}
+              style={{
+                background: '#e8590c', color: '#ffffff', border: 'none',
+                padding: '10px 22px', borderRadius: 4, fontSize: '0.9rem',
+                fontWeight: 600, cursor: 'pointer', letterSpacing: 0.5
+              }}
+            >
+              + New Project
+            </button>
+          )}
         </div>
 
         {projects.length === 0 ? (
@@ -94,7 +106,7 @@ export default function Dashboard() {
             background: '#ffffff', borderRadius: 8
           }}>
             <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No projects yet</p>
-            <p style={{ fontSize: '0.9rem' }}>Click "New Project" to get started.</p>
+            <p style={{ fontSize: '0.9rem' }}>{isClient ? 'You don\'t have any assigned projects.' : 'Click "New Project" to get started.'}</p>
           </div>
         ) : (
           <div style={{

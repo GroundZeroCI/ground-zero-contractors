@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from './supabase'
+import { useAuth } from './AuthContext'
 
 function daysBetween(a, b) {
   if (!a || !b) return 0
@@ -10,6 +11,7 @@ function daysBetween(a, b) {
 
 export default function ProductionLog() {
   const { id } = useParams()
+  const { userRole } = useAuth()
   const navigate = useNavigate()
   const [project, setProject] = useState(null)
   const [entries, setEntries] = useState([])
@@ -17,6 +19,8 @@ export default function ProductionLog() {
   const [quantity, setQuantity] = useState('')
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(null)
+
+  const canDelete = userRole === 'admin' || userRole === 'full'
 
   useEffect(() => {
     Promise.all([fetchProject(), fetchEntries()]).then(() => setLoading(false))
@@ -284,28 +288,30 @@ export default function ProductionLog() {
                   <tr style={{ borderBottom: '1px solid #e8e6df' }}>
                     <th style={{ textAlign: 'left', padding: '8px 12px', color: '#8a8578', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>Date</th>
                     <th style={{ textAlign: 'right', padding: '8px 12px', color: '#8a8578', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>Quantity</th>
-                    <th style={{ textAlign: 'center', padding: '8px 12px', color: '#8a8578', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}></th>
+                    {canDelete && <th style={{ textAlign: 'center', padding: '8px 12px', color: '#8a8578', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}></th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map((entry, i) => (
+                    {entries.map((entry, i) => (
                     <tr key={entry.id} style={{ borderBottom: i < entries.length - 1 ? '1px solid #f2f0ea' : 'none' }}>
                       <td style={{ padding: '10px 12px', color: '#1c1c1a' }}>{entry.date}</td>
                       <td style={{ padding: '10px 12px', textAlign: 'right', color: '#1c1c1a', fontWeight: 600 }}>
                         {entry.quantity?.toLocaleString()}
                       </td>
                       <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                        <button
-                          onClick={() => handleRemove(entry.id)}
-                          disabled={deleting === entry.id}
-                          style={{
-                            background: 'transparent', border: '1px solid #d4d0c8',
-                            color: '#8a8578', padding: '4px 10px', borderRadius: 4,
-                            fontSize: '0.75rem', cursor: deleting === entry.id ? 'not-allowed' : 'pointer'
-                          }}
-                        >
-                          Remove
-                        </button>
+                        {canDelete && (
+                          <button
+                            onClick={() => handleRemove(entry.id)}
+                            disabled={deleting === entry.id}
+                            style={{
+                              background: 'transparent', border: '1px solid #d4d0c8',
+                              color: '#8a8578', padding: '4px 10px', borderRadius: 4,
+                              fontSize: '0.75rem', cursor: deleting === entry.id ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            Remove
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
