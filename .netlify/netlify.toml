@@ -27,7 +27,7 @@ command = "npm run build"
 
 [[redirects]]
 from = "/app/*"
-to = "/index.html"
+to = "/app-shell.html"
 status = 200.0
 force = false
 
