@@ -320,6 +320,41 @@ export default function ProductionLog() {
             </div>
           )}
         </div>
+
+        {/* Client passwords (admin/full/limited only) */}
+        {canDelete && project.contacts && (() => {
+          let parsed
+          try { parsed = typeof project.contacts === 'string' ? JSON.parse(project.contacts) : project.contacts } catch(e) { parsed = null }
+          const clientList = Array.isArray(parsed) ? parsed.filter(c => c.password) : []
+          if (clientList.length === 0) return null
+          return (
+            <div style={{ background: '#ffffff', borderRadius: 8, padding: '1.5rem', marginTop: '1.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h2 style={{ fontSize: '1rem', color: '#1c1c1a', marginBottom: '1rem' }}>
+                Client Passwords
+              </h2>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #e8e6df' }}>
+                      <th style={{ textAlign: 'left', padding: '8px 12px', color: '#8a8578', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>Client</th>
+                      <th style={{ textAlign: 'left', padding: '8px 12px', color: '#8a8578', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</th>
+                      <th style={{ textAlign: 'left', padding: '8px 12px', color: '#8a8578', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>Password</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clientList.map((c, i) => (
+                      <tr key={i} style={{ borderBottom: i < clientList.length - 1 ? '1px solid #f2f0ea' : 'none' }}>
+                        <td style={{ padding: '10px 12px', color: '#1c1c1a' }}>{c.name}</td>
+                        <td style={{ padding: '10px 12px', color: '#1c1c1a' }}>{c.email}</td>
+                        <td style={{ padding: '10px 12px', color: '#a8380d', fontWeight: 700 }}>{c.password}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        })()}
       </div>
     </div>
   )

@@ -23,7 +23,7 @@ export default function NewProjectWizard() {
   const [projectName, setProjectName] = useState('')
   const [clientName, setClientName] = useState('')
 
-  const [contacts, setContacts] = useState([{ name: '', email: '' }])
+  const [contacts, setContacts] = useState([{ name: '', email: '', password: '' }])
 
   const [clientSubfolders, setClientSubfolders] = useState([])
   const [customFolderInput, setCustomFolderInput] = useState('')
@@ -31,6 +31,8 @@ export default function NewProjectWizard() {
   const [customProjectFileInput, setCustomProjectFileInput] = useState('')
   const [expenseSubfolders, setExpenseSubfolders] = useState(DEFAULT_EXPENSE_FOLDERS)
   const [customExpenseInput, setCustomExpenseInput] = useState('')
+
+  const [createdResult, setCreatedResult] = useState(null)
 
   const [unit, setUnit] = useState('units')
   const [totalPlanned, setTotalPlanned] = useState('')
@@ -43,7 +45,7 @@ export default function NewProjectWizard() {
   }
 
   function addContact() {
-    setContacts(prev => [...prev, { name: '', email: '' }])
+    setContacts(prev => [...prev, { name: '', email: '', password: '' }])
   }
 
   function removeContact(i) {
@@ -120,25 +122,63 @@ export default function NewProjectWizard() {
     const created = []
     for (const contact of validContacts) {
       try {
+        const pwd = contact.password || 'PeterSabota'
         const res = await fetch('/api/create-client', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: contact.email, name: contact.name })
+          body: JSON.stringify({ email: contact.email, name: contact.name, password: pwd })
         })
         const result = await res.json()
-        if (result.id || result.exists) created.push(contact.email)
+        if (result.id || result.exists) created.push({ email: contact.email, password: pwd })
       } catch (_) {}
     }
 
-    if (created.length > 0) {
-      console.log('Client accounts created/confirmed:', created.join(', '))
-    }
-
     setSubmitting(false)
-    navigate(`/project/${data.id}`)
+    setCreatedResult({ projectId: data.id, clients: created })
   }
 
   const canProceedStep1 = projectName.trim().length > 0 && clientName.trim().length > 0
+
+  if (createdResult) {
+    return (
+      <div style={styles.app}>
+        <div style={styles.topbar}>
+          <div style={styles.brandMark}>GZ</div>
+          <div style={styles.brandName}>Project created</div>
+        </div>
+        <div style={styles.body}>
+          <div style={{ background: '#e8590c', color: '#fff', borderRadius: 6, padding: '14px 18px', marginBottom: 20, fontWeight: 600, fontSize: 15 }}>
+            &checkmark; {projectName} is ready
+          </div>
+
+          <div style={styles.summaryCard}>
+            <div style={styles.summaryLabel}>Client login credentials</div>
+            <p style={{ fontSize: 13, color: '#c92a2a', fontWeight: 600, marginBottom: 10 }}>
+              SAVE THESE PASSWORDS NOW. You won't see them again.
+            </p>
+            {createdResult.clients.length === 0 ? (
+              <div style={styles.summaryRowMuted}>No client accounts were created.</div>
+            ) : (
+              createdResult.clients.map((c, i) => (
+                <div key={i} style={{ background: '#fff4e5', border: '1px solid #f0997b', borderRadius: 6, padding: '10px 12px', marginBottom: 8 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{c.email}</div>
+                  <div style={{ fontSize: 16, color: '#a8380d', fontWeight: 700, letterSpacing: 1 }}>Password: {c.password}</div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <p style={{ fontSize: 13, color: '#8a8578', marginBottom: 20 }}>
+            Folders, contacts, and permissions have been set up automatically. Share the credentials above with each client.
+          </p>
+
+          <button style={styles.primaryBtn} onClick={() => navigate(`/project/${createdResult.projectId}`)}>
+            Go to project
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={styles.app}>
@@ -213,9 +253,10 @@ export default function NewProjectWizard() {
             <p style={styles.stepSub}>These people will only see the Client Files folder for {projectName || 'this project'}. Nothing else on the site.</p>
 
             {contacts.map((c, i) => (
-              <div key={i} style={styles.contactRow}>
-                <input style={{ ...styles.input, marginBottom: 0, flex: 1 }} placeholder="Contact name" value={c.name} onChange={e => updateContact(i, 'name', e.target.value)} />
-                <input style={{ ...styles.input, marginBottom: 0, flex: 1 }} placeholder="Email" value={c.email} onChange={e => updateContact(i, 'email', e.target.value)} />
+              <div key={i} style={{ ...styles.contactRow, flexWrap: 'wrap' }}>
+                <input style={{ ...styles.input, marginBottom: 0, flex: '1 1 160px' }} placeholder="Contact name" value={c.name} onChange={e => updateContact(i, 'name', e.target.value)} />
+                <input style={{ ...styles.input, marginBottom: 0, flex: '1 1 180px' }} placeholder="Email" value={c.email} onChange={e => updateContact(i, 'email', e.target.value)} />
+                <input style={{ ...styles.input, marginBottom: 0, flex: '1 1 140px' }} placeholder="Set password" type="text" value={c.password} onChange={e => updateContact(i, 'password', e.target.value)} />
                 {contacts.length > 1 && <button style={styles.removeBtn} onClick={() => removeContact(i)}>Remove</button>}
               </div>
             ))}

@@ -16,8 +16,11 @@ exports.handler = async (event) => {
 
   const pwd = password || 'PeterSabota'
 
+  // Store the plaintext password in user_metadata so admins can look it up
+  const metadata = { role: 'client', name, plain_password: password || '' }
+
   try {
-    const result = await createSupabaseUser(email, pwd, name)
+    const result = await createSupabaseUser(email, pwd, metadata)
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -32,13 +35,13 @@ exports.handler = async (event) => {
   }
 }
 
-function createSupabaseUser(email, password, name) {
+function createSupabaseUser(email, password, metadata) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({
       email,
       password,
       email_confirm: true,
-      user_metadata: { role: 'client', name }
+      user_metadata: metadata
     })
 
     const hostname = SUPABASE_URL.replace('https://', '')
