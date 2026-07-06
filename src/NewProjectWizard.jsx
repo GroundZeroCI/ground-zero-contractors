@@ -3,81 +3,109 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabase'
 import { useAuth } from './AuthContext'
 
-const STEPS = ['Basic Info', 'Client Contacts', 'Folders', 'Review']
+const FIXED_SUBFOLDERS = [
+  'Client Files', 'Project Files', 'Expenses',
+  'Timesheets', 'Daily Safety Talks', 'Machine Inspections', 'Photos'
+]
+
+const SUGGESTED_CLIENT_FOLDERS = ['3rd Parties', 'Permits', 'Change Orders']
+const DEFAULT_PROJECT_FOLDERS = ['Drawings', 'Specs']
+const SUGGESTED_PROJECT_FOLDERS = ['As-Builts', 'Survey Data', 'Engineering Reports', 'Permits']
+const DEFAULT_EXPENSE_FOLDERS = ['Equipment Rentals', 'Fuel', 'Misc']
+const SUGGESTED_EXPENSE_FOLDERS = ['Materials', 'Subcontractors', 'Permits and Fees']
 
 export default function NewProjectWizard() {
   const { userRole, user } = useAuth()
   const navigate = useNavigate()
-  const [step, setStep] = useState(0)
+  const [step, setStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
 
-  const isClient = userRole === 'client'
+  const [projectName, setProjectName] = useState('')
+  const [clientName, setClientName] = useState('')
 
-  const [name, setName] = useState('')
-  const [client, setClient] = useState('')
+  const [contacts, setContacts] = useState([{ name: '', email: '' }])
+
+  const [clientSubfolders, setClientSubfolders] = useState([])
+  const [customFolderInput, setCustomFolderInput] = useState('')
+  const [projectFileSubfolders, setProjectFileSubfolders] = useState(DEFAULT_PROJECT_FOLDERS)
+  const [customProjectFileInput, setCustomProjectFileInput] = useState('')
+  const [expenseSubfolders, setExpenseSubfolders] = useState(DEFAULT_EXPENSE_FOLDERS)
+  const [customExpenseInput, setCustomExpenseInput] = useState('')
+
   const [unit, setUnit] = useState('units')
   const [totalPlanned, setTotalPlanned] = useState('')
   const [startDate, setStartDate] = useState('')
   const [targetDate, setTargetDate] = useState('')
   const [assignedClientEmail, setAssignedClientEmail] = useState('')
 
-  const [contacts, setContacts] = useState([{ name: '', email: '' }])
-
-  const [folders, setFolders] = useState(['Client Files', 'Project Files', 'Expenses'])
-  const [newFolder, setNewFolder] = useState('')
-
-  function addContact() {
-    setContacts([...contacts, { name: '', email: '' }])
+  function updateContact(i, field, value) {
+    setContacts(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c))
   }
 
-  function updateContact(i, field, value) {
-    const updated = [...contacts]
-    updated[i][field] = value
-    setContacts(updated)
+  function addContact() {
+    setContacts(prev => [...prev, { name: '', email: '' }])
   }
 
   function removeContact(i) {
-    if (contacts.length > 1) {
-      setContacts(contacts.filter((_, idx) => idx !== i))
+    setContacts(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  function toggleSuggestedFolder(name) {
+    setClientSubfolders(prev => prev.includes(name) ? prev.filter(f => f !== name) : [...prev, name])
+  }
+
+  function addCustomFolder() {
+    const name = customFolderInput.trim()
+    if (name && !clientSubfolders.includes(name)) {
+      setClientSubfolders(prev => [...prev, name])
     }
+    setCustomFolderInput('')
   }
 
-  function addFolder() {
-    const trimmed = newFolder.trim()
-    if (trimmed && !folders.includes(trimmed)) {
-      setFolders([...folders, trimmed])
-      setNewFolder('')
+  function toggleSuggestedProjectFolder(name) {
+    setProjectFileSubfolders(prev => prev.includes(name) ? prev.filter(f => f !== name) : [...prev, name])
+  }
+
+  function addCustomProjectFolder() {
+    const name = customProjectFileInput.trim()
+    if (name && !projectFileSubfolders.includes(name)) {
+      setProjectFileSubfolders(prev => [...prev, name])
     }
+    setCustomProjectFileInput('')
   }
 
-  function removeFolder(f) {
-    setFolders(folders.filter(x => x !== f))
+  function toggleSuggestedExpenseFolder(name) {
+    setExpenseSubfolders(prev => prev.includes(name) ? prev.filter(f => f !== name) : [...prev, name])
   }
 
-  function canNext() {
-    if (step === 0) return name && client && totalPlanned && startDate && targetDate
-    if (step === 1) return contacts.every(c => c.name && c.email)
-    if (step === 2) return folders.length > 0
-    return true
+  function addCustomExpenseFolder() {
+    const name = customExpenseInput.trim()
+    if (name && !expenseSubfolders.includes(name)) {
+      setExpenseSubfolders(prev => [...prev, name])
+    }
+    setCustomExpenseInput('')
   }
 
   async function handleCreate() {
     setSubmitting(true)
-    const { data, error } = await supabase
-      .from('projects')
-      .insert({
-        name,
-        client,
-        unit,
-        total_planned: parseFloat(totalPlanned),
-        start_date: startDate,
-        target_date: targetDate,
-        contacts: JSON.stringify(contacts),
-        folders: JSON.stringify(folders),
-        assigned_client_email: assignedClientEmail || null
-      })
-      .select()
-      .single()
+    const foldersData = {
+      fixed: FIXED_SUBFOLDERS,
+      clientFiles: clientSubfolders,
+      projectFiles: projectFileSubfolders,
+      expenses: expenseSubfolders
+    }
+
+    const { data, error } = await supabase.from('projects').insert({
+      name: projectName,
+      client: clientName,
+      unit,
+      total_planned: totalPlanned ? parseFloat(totalPlanned) : null,
+      start_date: startDate || null,
+      target_date: targetDate || null,
+      contacts: JSON.stringify(contacts.filter(c => c.name || c.email)),
+      folders: JSON.stringify(foldersData),
+      assigned_client_email: assignedClientEmail || null
+    }).select().single()
 
     setSubmitting(false)
     if (!error && data) {
@@ -85,257 +113,333 @@ export default function NewProjectWizard() {
     }
   }
 
+  const canProceedStep1 = projectName.trim().length > 0 && clientName.trim().length > 0
+
   return (
-    <div style={{ minHeight: '100vh', background: '#f2f0ea' }}>
-      {/* Top bar */}
-      <div style={{
-        background: '#14202b', height: 72, display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', padding: '0 2rem', position: 'sticky', top: 0, zIndex: 100
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 36, height: 36, border: '2px solid #ffffff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 800, fontSize: 16, color: '#ffffff', letterSpacing: 1
-          }}>GZ</div>
-          <div style={{ color: '#ffffff', fontWeight: 700, fontSize: 14, letterSpacing: 1.5 }}>
-            GROUND ZERO
-            <span style={{ fontWeight: 400, fontSize: 11, color: '#b0b0b0', display: 'block' }}>
-              CONTRACTORS INC.
-            </span>
-          </div>
-        </div>
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            background: 'transparent', color: '#c0c0c0', border: '1px solid #555',
-            padding: '6px 14px', borderRadius: 4, fontSize: '0.8rem', cursor: 'pointer'
-          }}
-        >
-          Cancel
-        </button>
+    <div style={styles.app}>
+      <div style={styles.topbar}>
+        <div style={styles.brandMark}>GZ</div>
+        <div style={styles.brandName}>New project setup</div>
+        <button onClick={() => navigate('/')} style={styles.cancelBtn}>Cancel</button>
       </div>
 
-      <div style={{ maxWidth: 700, margin: '0 auto', padding: '2rem' }}>
-        {/* Step indicator */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem' }}>
-          {STEPS.map((label, i) => (
-            <div key={label} style={{
-              flex: 1, textAlign: 'center', padding: '8px 0',
-              fontSize: '0.75rem', fontWeight: 600, letterSpacing: 0.5,
-              color: i === step ? '#e8590c' : i < step ? '#2b8a3e' : '#8a8578',
-              borderBottom: `3px solid ${i === step ? '#e8590c' : i < step ? '#2b8a3e' : '#d4d0c8'}`,
-              transition: 'all 0.2s'
-            }}>
-              {i < step ? '\u2713 ' : ''}{label}
-            </div>
-          ))}
-        </div>
+      <div style={styles.stepIndicator}>
+        <div style={{ ...styles.stepDot, ...(step >= 1 ? styles.stepDotActive : {}) }}>1</div>
+        <div style={styles.stepLine} />
+        <div style={{ ...styles.stepDot, ...(step >= 2 ? styles.stepDotActive : {}) }}>2</div>
+        <div style={styles.stepLine} />
+        <div style={{ ...styles.stepDot, ...(step >= 3 ? styles.stepDotActive : {}) }}>3</div>
+        <div style={styles.stepLine} />
+        <div style={{ ...styles.stepDot, ...(step >= 4 ? styles.stepDotActive : {}) }}>4</div>
+      </div>
 
-        {/* Step content */}
-        <div style={{ background: '#ffffff', borderRadius: 8, padding: '2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          {step === 0 && (
-            <div>
-              <h2 style={{ fontSize: '1.1rem', color: '#1c1c1a', marginBottom: '1.5rem' }}>Step 1: Basic Information</h2>
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1c1c1a', marginBottom: 4 }}>Project Name</label>
-                  <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Highway 401 Expansion" style={inputStyle} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1c1c1a', marginBottom: 4 }}>Client</label>
-                  <input value={client} onChange={e => setClient(e.target.value)} placeholder="e.g. Ministry of Transportation" style={inputStyle} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1c1c1a', marginBottom: 4 }}>Unit</label>
-                    <select value={unit} onChange={e => setUnit(e.target.value)} style={inputStyle}>
-                      <option value="units">units</option>
-                      <option value="m³">m³</option>
-                      <option value="tonnes">tonnes</option>
-                      <option value="sq ft">sq ft</option>
-                      <option value="lin ft">lin ft</option>
-                      <option value="hours">hours</option>
-                      <option value="each">each</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1c1c1a', marginBottom: 4 }}>Total Planned</label>
-                    <input type="number" step="any" value={totalPlanned} onChange={e => setTotalPlanned(e.target.value)} placeholder="e.g. 50000" style={inputStyle} />
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1c1c1a', marginBottom: 4 }}>Start Date</label>
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1c1c1a', marginBottom: 4 }}>Target Date</label>
-                    <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} style={inputStyle} />
-                  </div>
-                </div>
-                {!isClient && (
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1c1c1a', marginBottom: 4 }}>Assigned Client Email (optional)</label>
-                    <input
-                      type="email"
-                      value={assignedClientEmail}
-                      onChange={e => setAssignedClientEmail(e.target.value)}
-                      placeholder="client@example.com"
-                      style={inputStyle}
-                    />
-                    <p style={{ fontSize: '0.75rem', color: '#8a8578', marginTop: 4 }}>Assign a client user to this project. They'll only see this project.</p>
-                  </div>
-                )}
+      <div style={styles.body}>
+        {step === 1 && (
+          <>
+            <h2 style={styles.stepTitle}>What's the project called?</h2>
+            <p style={styles.stepSub}>This is just for your team to recognize it in the folder list.</p>
+
+            <label style={styles.label}>Project name</label>
+            <input style={styles.input} placeholder="e.g. T210 Remediation" value={projectName} onChange={e => setProjectName(e.target.value)} />
+
+            <label style={styles.label}>Client name</label>
+            <input style={styles.input} placeholder="e.g. Acme Corp" value={clientName} onChange={e => setClientName(e.target.value)} />
+
+            <label style={styles.label}>Tracking unit (optional)</label>
+            <select value={unit} onChange={e => setUnit(e.target.value)} style={styles.input}>
+              <option value="units">units</option>
+              <option value="m\u00b3">m\u00b3</option>
+              <option value="tonnes">tonnes</option>
+              <option value="sq ft">sq ft</option>
+              <option value="lin ft">lin ft</option>
+              <option value="hours">hours</option>
+              <option value="each">each</option>
+            </select>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <label style={styles.label}>Total planned</label>
+                <input type="number" style={styles.input} placeholder="e.g. 50000" value={totalPlanned} onChange={e => setTotalPlanned(e.target.value)} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={styles.label}>Start date</label>
+                <input type="date" style={styles.input} value={startDate} onChange={e => setStartDate(e.target.value)} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={styles.label}>Target date</label>
+                <input type="date" style={styles.input} value={targetDate} onChange={e => setTargetDate(e.target.value)} />
               </div>
             </div>
-          )}
 
-          {step === 1 && (
-            <div>
-              <h2 style={{ fontSize: '1.1rem', color: '#1c1c1a', marginBottom: '1.5rem' }}>Step 2: Client Contacts</h2>
-              {contacts.map((c, i) => (
-                <div key={i} style={{
-                  display: 'flex', gap: '0.75rem', alignItems: 'flex-end',
-                  marginBottom: '0.75rem', paddingBottom: '0.75rem',
-                  borderBottom: i < contacts.length - 1 ? '1px solid #f2f0ea' : 'none'
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#8a8578', marginBottom: 3 }}>Name</label>
-                    <input value={c.name} onChange={e => updateContact(i, 'name', e.target.value)} placeholder="Contact name" style={inputStyle} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#8a8578', marginBottom: 3 }}>Email</label>
-                    <input value={c.email} onChange={e => updateContact(i, 'email', e.target.value)} placeholder="email@example.com" style={inputStyle} />
-                  </div>
-                  <button onClick={() => removeContact(i)} disabled={contacts.length <= 1}
-                    style={{
-                      background: 'transparent', border: '1px solid #d4d0c8',
-                      color: '#8a8578', padding: '6px 10px', borderRadius: 4,
-                      fontSize: '0.8rem', cursor: contacts.length <= 1 ? 'not-allowed' : 'pointer',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >Remove</button>
-                </div>
-              ))}
-              <button onClick={addContact} style={{
-                background: 'transparent', border: '1px dashed #d4d0c8', color: '#8a8578',
-                padding: '8px 16px', borderRadius: 4, fontSize: '0.85rem', cursor: 'pointer',
-                width: '100%'
-              }}>+ Add Contact</button>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div>
-              <h2 style={{ fontSize: '1.1rem', color: '#1c1c1a', marginBottom: '1.5rem' }}>Step 3: Project Folders</h2>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-                {folders.map(f => (
-                  <div key={f} style={{
-                    background: '#f2f0ea', borderRadius: 20, padding: '5px 12px',
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    fontSize: '0.85rem', color: '#1c1c1a'
-                  }}>
-                    {f}
-                    <span onClick={() => removeFolder(f)} style={{ cursor: 'pointer', color: '#8a8578', fontWeight: 700 }}>&times;</span>
-                  </div>
-                ))}
+            {userRole !== 'client' && (
+              <div>
+                <label style={styles.label}>Assigned client email (optional)</label>
+                <input type="email" style={styles.input} placeholder="client@example.com" value={assignedClientEmail} onChange={e => setAssignedClientEmail(e.target.value)} />
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  value={newFolder}
-                  onChange={e => setNewFolder(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFolder(); } }}
-                  placeholder="Folder name"
-                  style={{ ...inputStyle, flex: 1 }}
-                />
-                <button onClick={addFolder} style={{
-                  background: '#e8590c', color: '#ffffff', border: 'none',
-                  padding: '8px 16px', borderRadius: 4, fontSize: '0.85rem',
-                  fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap'
-                }}>Add</button>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div>
-              <h2 style={{ fontSize: '1.1rem', color: '#1c1c1a', marginBottom: '1.5rem' }}>Step 4: Review &amp; Create</h2>
-              <div style={{ display: 'grid', gap: '0.75rem' }}>
-                <ReviewRow label="Project Name" value={name} />
-                <ReviewRow label="Client" value={client} />
-                <ReviewRow label="Total Planned" value={`${parseFloat(totalPlanned).toLocaleString()} ${unit}`} />
-                <ReviewRow label="Start Date" value={startDate} />
-                <ReviewRow label="Target Date" value={targetDate} />
-                {assignedClientEmail && <ReviewRow label="Client Email" value={assignedClientEmail} />}
-                <ReviewRow label="Contacts" value={contacts.filter(c => c.name && c.email).map(c => `${c.name} (${c.email})`).join(', ') || 'None'} />
-                <ReviewRow label="Folders" value={folders.join(', ')} />
-              </div>
-            </div>
-          )}
-
-          {/* Navigation */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
-            <button
-              onClick={() => step === 0 ? navigate('/') : setStep(step - 1)}
-              style={{
-                background: 'transparent', color: '#8a8578', border: '1px solid #d4d0c8',
-                padding: '10px 22px', borderRadius: 4, fontSize: '0.85rem',
-                fontWeight: 600, cursor: 'pointer'
-              }}
-            >
-              {step === 0 ? 'Cancel' : 'Back'}
-            </button>
-
-            {step < 3 ? (
-              <button
-                onClick={() => setStep(step + 1)}
-                disabled={!canNext()}
-                style={{
-                  background: '#e8590c', color: '#ffffff', border: 'none',
-                  padding: '10px 22px', borderRadius: 4, fontSize: '0.85rem',
-                  fontWeight: 600, cursor: canNext() ? 'pointer' : 'not-allowed',
-                  opacity: canNext() ? 1 : 0.5
-                }}
-              >
-                Next
-              </button>
-            ) : (
-              <button
-                onClick={handleCreate}
-                disabled={submitting}
-                style={{
-                  background: '#e8590c', color: '#ffffff', border: 'none',
-                  padding: '10px 22px', borderRadius: 4, fontSize: '0.85rem',
-                  fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer',
-                  opacity: submitting ? 0.5 : 1
-                }}
-              >
-                {submitting ? 'Creating...' : 'Create Project'}
-              </button>
             )}
-          </div>
-        </div>
+
+            <button style={{ ...styles.primaryBtn, ...(!canProceedStep1 ? styles.disabledBtn : {}) }} disabled={!canProceedStep1} onClick={() => setStep(2)}>Next</button>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <h2 style={styles.stepTitle}>Who from the client can see project files?</h2>
+            <p style={styles.stepSub}>These people will only see the Client Files folder for {projectName || 'this project'}. Nothing else on the site.</p>
+
+            {contacts.map((c, i) => (
+              <div key={i} style={styles.contactRow}>
+                <input style={{ ...styles.input, marginBottom: 0, flex: 1 }} placeholder="Contact name" value={c.name} onChange={e => updateContact(i, 'name', e.target.value)} />
+                <input style={{ ...styles.input, marginBottom: 0, flex: 1 }} placeholder="Email" value={c.email} onChange={e => updateContact(i, 'email', e.target.value)} />
+                {contacts.length > 1 && <button style={styles.removeBtn} onClick={() => removeContact(i)}>Remove</button>}
+              </div>
+            ))}
+
+            <button style={styles.secondaryBtn} onClick={addContact}>+ Add another contact</button>
+
+            <div style={styles.stepButtons}>
+              <button style={styles.secondaryBtn} onClick={() => setStep(1)}>Back</button>
+              <button style={styles.primaryBtn} onClick={() => setStep(3)}>Next</button>
+            </div>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <h2 style={styles.stepTitle}>Set up folders for this project</h2>
+            <p style={styles.stepSub}>Optional. Bigger projects with lots of third parties, drawings, or varied expenses often want these split out.</p>
+
+            <h3 style={styles.sectionTitle}>Client Files folder</h3>
+            <div style={styles.chipRow}>
+              {SUGGESTED_CLIENT_FOLDERS.map(name => (
+                <button key={name} style={{ ...styles.chip, ...(clientSubfolders.includes(name) ? styles.chipActive : {}) }} onClick={() => toggleSuggestedFolder(name)}>
+                  {clientSubfolders.includes(name) ? 'Added: ' : '+ '}{name}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input style={{ ...styles.input, marginBottom: 0, flex: 1 }} placeholder="e.g. Subcontractor Insurance" value={customFolderInput} onChange={e => setCustomFolderInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomFolder()} />
+              <button style={styles.secondaryBtn} onClick={addCustomFolder}>Add</button>
+            </div>
+
+            <div style={styles.divider} />
+
+            <h3 style={styles.sectionTitle}>Project Files folder</h3>
+            <p style={styles.stepSub}>Internal reference material — drawings and specs are added by default. Not visible to clients.</p>
+            <div style={styles.chipRow}>
+              {[...DEFAULT_PROJECT_FOLDERS, ...SUGGESTED_PROJECT_FOLDERS].map(name => (
+                <button key={name} style={{ ...styles.chip, ...(projectFileSubfolders.includes(name) ? styles.chipActive : {}) }} onClick={() => toggleSuggestedProjectFolder(name)}>
+                  {projectFileSubfolders.includes(name) ? 'Added: ' : '+ '}{name}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input style={{ ...styles.input, marginBottom: 0, flex: 1 }} placeholder="e.g. Geotechnical Reports" value={customProjectFileInput} onChange={e => setCustomProjectFileInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomProjectFolder()} />
+              <button style={styles.secondaryBtn} onClick={addCustomProjectFolder}>Add</button>
+            </div>
+
+            <div style={styles.divider} />
+
+            <h3 style={styles.sectionTitle}>Expenses folder</h3>
+            <p style={styles.stepSub}>Equipment Rentals, Fuel, and Misc are added by default. Add more if needed.</p>
+            <div style={styles.chipRow}>
+              {[...DEFAULT_EXPENSE_FOLDERS, ...SUGGESTED_EXPENSE_FOLDERS].map(name => (
+                <button key={name} style={{ ...styles.chip, ...(expenseSubfolders.includes(name) ? styles.chipActive : {}) }} onClick={() => toggleSuggestedExpenseFolder(name)}>
+                  {expenseSubfolders.includes(name) ? 'Added: ' : '+ '}{name}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input style={{ ...styles.input, marginBottom: 0, flex: 1 }} placeholder="e.g. Rental Deposits" value={customExpenseInput} onChange={e => setCustomExpenseInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomExpenseFolder()} />
+              <button style={styles.secondaryBtn} onClick={addCustomExpenseFolder}>Add</button>
+            </div>
+
+            <div style={styles.stepButtons}>
+              <button style={styles.secondaryBtn} onClick={() => setStep(2)}>Back</button>
+              <button style={styles.primaryBtn} onClick={() => setStep(4)}>Next</button>
+            </div>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <h2 style={styles.stepTitle}>Review and create</h2>
+            <p style={styles.stepSub}>Here is what will be set up. Nothing else to configure.</p>
+
+            <div style={styles.summaryCard}>
+              <div style={styles.summaryLabel}>Project</div>
+              <div style={styles.summaryRow}>{projectName}</div>
+              <div style={styles.summaryRowMuted}>Client: {clientName}</div>
+            </div>
+
+            <div style={styles.summaryCard}>
+              <div style={styles.summaryLabel}>Folders (created automatically)</div>
+              {FIXED_SUBFOLDERS.map(f => <div key={f} style={styles.summaryRow}>{f}</div>)}
+              {clientSubfolders.length > 0 && (
+                <div style={{ marginTop: 8, paddingLeft: 14 }}>
+                  <div style={styles.summaryRowMuted}>Inside Client Files:</div>
+                  {clientSubfolders.map(f => <div key={f} style={styles.summaryRow}>{f}</div>)}
+                </div>
+              )}
+              {projectFileSubfolders.length > 0 && (
+                <div style={{ marginTop: 8, paddingLeft: 14 }}>
+                  <div style={styles.summaryRowMuted}>Inside Project Files:</div>
+                  {projectFileSubfolders.map(f => <div key={f} style={styles.summaryRow}>{f}</div>)}
+                </div>
+              )}
+              {expenseSubfolders.length > 0 && (
+                <div style={{ marginTop: 8, paddingLeft: 14 }}>
+                  <div style={styles.summaryRowMuted}>Inside Expenses:</div>
+                  {expenseSubfolders.map(f => <div key={f} style={styles.summaryRow}>{f}</div>)}
+                </div>
+              )}
+            </div>
+
+            <div style={styles.summaryCard}>
+              <div style={styles.summaryLabel}>Client access</div>
+              {contacts.filter(c => c.name || c.email).length === 0 ? (
+                <div style={styles.summaryRowMuted}>None added — can be added later</div>
+              ) : (
+                contacts.filter(c => c.name || c.email).map((c, i) => (
+                  <div key={i} style={styles.summaryRow}>{c.name} ({c.email || 'no email yet'})</div>
+                ))
+              )}
+            </div>
+
+            {totalPlanned && (
+              <div style={styles.summaryCard}>
+                <div style={styles.summaryLabel}>Production tracking</div>
+                <div style={styles.summaryRow}>{totalPlanned} {unit} planned</div>
+                {startDate && <div style={styles.summaryRowMuted}>Start: {startDate}</div>}
+                {targetDate && <div style={styles.summaryRowMuted}>Target: {targetDate}</div>}
+              </div>
+            )}
+
+            {assignedClientEmail && (
+              <div style={styles.summaryCard}>
+                <div style={styles.summaryLabel}>Client portal access</div>
+                <div style={styles.summaryRow}>{assignedClientEmail}</div>
+              </div>
+            )}
+
+            <div style={styles.stepButtons}>
+              <button style={styles.secondaryBtn} onClick={() => setStep(3)}>Back</button>
+              <button style={styles.primaryBtn} onClick={handleCreate} disabled={submitting}>
+                {submitting ? 'Creating...' : 'Create project'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
 }
 
-const inputStyle = {
-  width: '100%',
-  padding: '9px 12px',
-  border: '1px solid #d4d0c8',
-  borderRadius: 4,
-  fontSize: '0.9rem',
-  background: '#fafaf8',
-  outline: 'none'
-}
-
-function ReviewRow({ label, value }) {
-  return (
-    <div style={{ display: 'flex', gap: '1rem' }}>
-      <span style={{ width: 140, fontWeight: 600, color: '#8a8578', fontSize: '0.85rem', flexShrink: 0 }}>{label}</span>
-      <span style={{ color: '#1c1c1a', fontSize: '0.85rem' }}>{value}</span>
-    </div>
-  )
+const styles = {
+  app: {
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    color: '#1c1c1a',
+    background: '#f2f0ea',
+    minHeight: '100vh',
+    maxWidth: 640,
+    margin: '0 auto',
+  },
+  topbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '14px 20px',
+    background: '#14202b',
+    color: '#fff',
+  },
+  brandMark: {
+    width: 32,
+    height: 32,
+    background: '#e8590c',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 700,
+    fontSize: 12,
+  },
+  brandName: { fontWeight: 600, fontSize: 15, flex: 1 },
+  cancelBtn: {
+    background: 'transparent', color: '#c0c0c0', border: '1px solid #555',
+    padding: '6px 14px', borderRadius: 4, fontSize: '0.8rem', cursor: 'pointer'
+  },
+  stepIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: '20px 0 4px',
+    background: '#f2f0ea',
+  },
+  stepDot: {
+    width: 26, height: 26, borderRadius: '50%',
+    background: '#e2ded2', color: '#8a8578',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 12, fontWeight: 600,
+  },
+  stepDotActive: { background: '#e8590c', color: '#fff' },
+  stepLine: { width: 40, height: 2, background: '#e2ded2' },
+  body: { padding: '24px 32px 32px', background: '#f2f0ea' },
+  stepTitle: { fontSize: 19, fontWeight: 600, margin: '0 0 6px' },
+  stepSub: { fontSize: 13, color: '#8a8578', margin: '0 0 20px' },
+  sectionTitle: { fontSize: 15, fontWeight: 600, margin: '0 0 4px' },
+  label: { display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, marginTop: 14 },
+  input: {
+    width: '100%',
+    padding: '10px 12px',
+    fontSize: 14,
+    border: '1px solid #d8d5cb',
+    borderRadius: 6,
+    marginBottom: 4,
+    boxSizing: 'border-box',
+    background: '#fafaf8',
+  },
+  contactRow: { display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' },
+  chipRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  chip: {
+    fontSize: 13,
+    padding: '8px 14px',
+    borderRadius: 20,
+    border: '1px solid #d8d5cb',
+    background: '#fff',
+    color: '#57544c',
+    cursor: 'pointer',
+  },
+  chipActive: {
+    background: '#fde4d3',
+    borderColor: '#e8590c',
+    color: '#a8380d',
+    fontWeight: 500,
+  },
+  removeBtn: {
+    fontSize: 12, color: '#a8380d', background: 'none',
+    border: '1px solid #f0997b', borderRadius: 4,
+    padding: '8px 10px', cursor: 'pointer', whiteSpace: 'nowrap',
+  },
+  primaryBtn: {
+    background: '#e8590c', color: '#fff', border: 'none', borderRadius: 6,
+    padding: '11px 22px', fontSize: 14, fontWeight: 600, cursor: 'pointer', marginTop: 20,
+  },
+  disabledBtn: { background: '#e2ded2', color: '#a8a498', cursor: 'not-allowed' },
+  secondaryBtn: {
+    background: 'none', color: '#57544c', border: '1px solid #d8d5cb',
+    borderRadius: 6, padding: '11px 20px', fontSize: 14, cursor: 'pointer', marginTop: 12,
+  },
+  stepButtons: { display: 'flex', gap: 10, marginTop: 20 },
+  divider: { borderTop: '1px solid #e2ded2', margin: '24px 0 20px' },
+  summaryCard: {
+    background: '#fff', border: '1px solid #e2ded2', borderRadius: 8,
+    padding: '14px 16px', marginBottom: 14,
+  },
+  summaryLabel: {
+    fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em',
+    color: '#8a8578', marginBottom: 8,
+  },
+  summaryRow: { fontSize: 14, padding: '3px 0' },
+  summaryRowMuted: { fontSize: 13, color: '#8a8578', padding: '3px 0' },
 }
